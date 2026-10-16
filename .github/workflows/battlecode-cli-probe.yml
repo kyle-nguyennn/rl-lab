@@ -29,15 +29,10 @@ jobs:
         run: |
           mkdir -p replays/eval-ci
           cambc run heuristic-v1 baseline --map ambush --statistics replays/eval-ci/candidate-A-stats.json
-      - name: Candidate as Team B (ambush)
-        working-directory: battlecode-2026
-        run: |
-          cambc run baseline heuristic-v1 --map ambush --statistics replays/eval-ci/candidate-B-stats.json
-      - name: Summarize swapped matches
+      - name: Summarize diagnostic match
         working-directory: battlecode-2026
         run: |
           python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
-          python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
       - name: Inspect replay debug logs
         if: always()
         working-directory: battlecode-2026
