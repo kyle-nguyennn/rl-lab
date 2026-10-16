@@ -1,25 +1,47 @@
-name: Battlecode Autumn CLI Probe
+name: Battlecode Autumn Integration
 
 on:
   push:
     paths:
       - '.github/workflows/battlecode-cli-probe.yml'
+      - 'battlecode-2026/bots/heuristic-v1/**'
   workflow_dispatch:
 
 jobs:
-  inspect-cli:
+  test-local-matches:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install the pinned Autumn CLI
+      - name: Install pinned Autumn 2026 CLI
         run: python -m pip install 'cambc==2.1.6'
-      - name: Inspect actual available commands
+      - name: Inspect batch and build interfaces
         working-directory: battlecode-2026
         run: |
-          cambc --help
           cambc run --help
-          cambc test-run --help
+          cambc run-batch --help
+          cambc build --help
+      - name: Candidate as Team A (contest)
+        working-directory: battlecode-2026
+        run: |
+          mkdir -p replays/eval-ci
+          cambc run heuristic-v1 baseline --map contest --statistics replays/eval-ci/candidate-A-stats.json
+      - name: Candidate as Team B (contest)
+        working-directory: battlecode-2026
+        run: |
+          cambc run baseline heuristic-v1 --map contest --statistics replays/eval-ci/candidate-B-stats.json
+      - name: Summarize swapped matches
+        working-directory: battlecode-2026
+        run: |
+          python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
+          python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
+      - name: Upload replay and statistics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlecode-v1-contest-eval
+          path: battlecode-2026/replays/eval-ci/
+          if-no-files-found: warn
