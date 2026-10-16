@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Produce reproducible side-swapped evaluation plans, optionally execute them.
+"""Run Autumn 2026 CLI matches with side swapping and a statistics manifest.
 
-Example (from battlecode-2026/):
- python tools/eval_matches.py --maps contest lanes --seeds 1 2 3
- # Inspect `cambc run --help` for your installed Autumn 2026 version.
- python tools/eval_matches.py --maps contest lanes --seeds 1 2 3 \
-   --run-template 'cambc run {team_a} {team_b} {map} --seed {seed} <verified-stats-option> {stats}' \
-   --execute
-
-No CLI flags beyond those supplied in --run-template are assumed.
+The verified cambc 2.1.6 `run` CLI has --map and --statistics, but NO --seed.
+Replicates on an unchanged map may be identical; diversify across maps and
+drafts rather than interpreting a trial index as an engine RNG seed.
 """
 import argparse
 import csv
@@ -17,32 +12,31 @@ import shlex
 import subprocess
 
 
-def matrix(maps, seeds, candidate="bots/heuristic-v1", control="bots/baseline"):
-    """Yield symmetric side-swapped match configurations."""
+DEFAULT_COMMAND = "cambc run {team_a} {team_b} --map {map} --statistics {stats}"
+
+
+def matrix(maps, trials=(1,), candidate="heuristic-v1", control="baseline"):
+    """Yield symmetric side-swapped configurations; trial is a label, NOT seed."""
     for map_name in maps:
-        for seed in seeds:
+        for trial in trials:
             for side in ("teamA", "teamB"):
                 a = candidate if side == "teamA" else control
                 b = control if side == "teamA" else candidate
-                filename = f"{map_name}-seed{seed}-{side}-stats.json"
                 yield {
                     "map": map_name,
-                    "seed": str(seed),
+                    "trial": str(trial),
                     "candidate_side": side,
                     "team_a": a,
                     "team_b": b,
-                    "map_file": f"maps/{map_name}.map26a",
-                    "stats": filename,
+                    "stats": f"{map_name}-trial{trial}-{side}-stats.json",
                 }
 
 
 def execute(rows, template, output_dir):
-    if not template:
-        raise ValueError("--execute requires --run-template from verified cambc --help")
     for row in rows:
         args = {
             "team_a": row["team_a"], "team_b": row["team_b"],
-            "map": row["map_file"], "seed": row["seed"],
+            "map": row["map"], "trial": row["trial"],
             "stats": str((output_dir / row["stats"]).resolve()),
         }
         command = [part.format(**args) for part in shlex.split(template)]
@@ -50,24 +44,24 @@ def execute(rows, template, output_dir):
         subprocess.run(command, check=True)
         if not (output_dir / row["stats"]).exists():
             raise FileNotFoundError(
-                f"runner completed but stats missing: {output_dir / row['stats']}. "
-                "Check your CLI's statistics-output option."
+                f"runner finished without stats: {output_dir / row['stats']}"
             )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--maps", nargs="+", required=True)
-    parser.add_argument("--seeds", nargs="+", type=int, required=True)
-    parser.add_argument("--candidate", default="bots/heuristic-v1")
-    parser.add_argument("--control", default="bots/baseline")
+    parser.add_argument("--trials", nargs="+", type=int, default=[1])
+    parser.add_argument("--candidate", default="heuristic-v1")
+    parser.add_argument("--control", default="baseline")
     parser.add_argument("--out", type=Path, default=Path("replays/eval-v1/manifest.csv"))
-    parser.add_argument("--run-template",
-                        help="explicitly verified CLI command template; placeholders: "
-                             "{team_a}, {team_b}, {map}, {seed}, {stats}")
-    parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--run-template", default=DEFAULT_COMMAND,
+                        help="verified default for cambc 2.1.6; placeholders: "
+                             "{team_a}, {team_b}, {map}, {trial}, {stats}")
+    parser.add_argument("--execute", action="store_true",
+                        help="otherwise write manifest only")
     args = parser.parse_args()
-    rows = list(matrix(args.maps, args.seeds, args.candidate, args.control))
+    rows = list(matrix(args.maps, args.trials, args.candidate, args.control))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", newline="", encoding="utf8") as output:
         writer = csv.DictWriter(output, fieldnames=rows[0].keys())
