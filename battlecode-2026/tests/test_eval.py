@@ -1,6 +1,8 @@
 """Regression tests against the committed starter-vs-starter stats fixture."""
 import json
 import sys
+import tempfile
+from zipfile import ZipFile
 import unittest
 from pathlib import Path
 
@@ -9,6 +11,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from summarize_stats import summarize_match, candidate_results, report
 from eval_matches import matrix
+from validate_runtime import validate
 
 
 class StatisticsTests(unittest.TestCase):
@@ -44,6 +47,19 @@ class StatisticsTests(unittest.TestCase):
         self.assertNotEqual(rows[0]["team_a"], rows[1]["team_a"])
         self.assertEqual(rows[0]["map"], "contest")
         self.assertEqual(rows[0]["trial"], "1")
+
+
+    def test_runtime_gate_detects_swallowed_errors(self):
+        fixture = summarize_match(self.stats)
+        self.assertEqual(fixture["faults"], [0, 0])
+        with tempfile.TemporaryDirectory() as directory:
+            replay = Path(directory) / "test.repl26a"
+            with ZipFile(replay, "w") as zipfile:
+                zipfile.writestr("team-a.stdout", b"HEURISTIC_V1_ERROR: ValueError")
+                zipfile.writestr("team-b.stdout", b"")
+            with self.assertRaises(AssertionError):
+                validate(self.stats, replay, "teamA", 1)
+            self.assertEqual(validate(self.stats, replay, "teamB", 1)["gems"], 1038)
 
 
 if __name__ == "__main__":
