@@ -1,0 +1,58 @@
+name: Battlecode Autumn Integration
+
+on:
+  push:
+    paths:
+      - '.github/workflows/battlecode-cli-probe.yml'
+      - 'battlecode-2026/bots/heuristic-v1/**'
+  workflow_dispatch:
+
+jobs:
+  test-local-matches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned Autumn 2026 CLI
+        run: python -m pip install 'cambc==2.1.6'
+      - name: Inspect batch and build interfaces
+        working-directory: battlecode-2026
+        run: |
+          cambc run --help
+          cambc run-batch --help
+          cambc build --help
+      - name: Candidate as Team A (ambush)
+        working-directory: battlecode-2026
+        run: |
+          mkdir -p replays/eval-ci
+          cambc run heuristic-v1 baseline --map ambush --statistics replays/eval-ci/candidate-A-stats.json
+      - name: Candidate as Team B (ambush)
+        working-directory: battlecode-2026
+        run: |
+          cambc run baseline heuristic-v1 --map ambush --statistics replays/eval-ci/candidate-B-stats.json
+      - name: Summarize side-swapped matches
+        working-directory: battlecode-2026
+        run: |
+          python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
+          python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
+      - name: Enforce live-match validity gates
+        working-directory: battlecode-2026
+        run: |
+          python tools/validate_runtime.py --statistics replays/eval-ci/candidate-A-stats.json --replay-glob 'replays/heuristic-v1-vs-baseline-*.repl26a' --side teamA --min-gems 1
+          python tools/validate_runtime.py --statistics replays/eval-ci/candidate-B-stats.json --replay-glob 'replays/baseline-vs-heuristic-v1-*.repl26a' --side teamB --min-gems 1
+      - name: Inspect replay debug logs
+        if: always()
+        working-directory: battlecode-2026
+        run: python tools/inspect_replay.py replays/*.repl26a --max-lines 25
+      - name: Upload replay and statistics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: battlecode-v1-ambush-eval
+          path: |
+            battlecode-2026/replays/eval-ci/
+            battlecode-2026/replays/*.repl26a
+          if-no-files-found: warn

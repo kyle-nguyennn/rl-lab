@@ -1,0 +1,28 @@
+name: Battlecode Python Checks
+
+on:
+  push:
+    paths:
+      - 'battlecode-2026/bots/heuristic-v1/**'
+      - 'battlecode-2026/tools/**'
+      - 'battlecode-2026/tests/**'
+      - '.github/workflows/battlecode-python-checks.yml'
+  pull_request:
+    paths:
+      - 'battlecode-2026/**'
+      - '.github/workflows/battlecode-python-checks.yml'
+
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile candidate and analysis scripts
+        run: python -m compileall -q battlecode-2026/bots/heuristic-v1/src battlecode-2026/tools battlecode-2026/tests
+      - name: Run pure policy and saved stats regression tests
+        run: python -m unittest discover -v -s battlecode-2026/tests -p 'test_*.py'
+      - name: Analyze preserved replay fixture
+        run: python battlecode-2026/tools/summarize_stats.py battlecode-2026/replays/baseline-vs-starter-stats.json --candidate-side teamA
