@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Summarize CAMBC 2026a *-stats.json files.
 
-Optional CSV manifest columns: stats,candidate_side,map,seed.
+Optional CSV manifest columns: stats,candidate_side,map,trial.
 Without a manifest, --candidate-side applies to every supplied JSON path.
 This is post-match analysis, not a replacement for the native cambc runner.
 """
@@ -40,14 +40,14 @@ def summarize_match(stats):
 def candidate_results(records):
     """Records of (match_summary, candidate_side, map, seed)."""
     games = []
-    for summary, side, map_name, seed in records:
+    for summary, side, map_name, trial in records:
         if side not in ("teamA", "teamB"):
             raise ValueError("candidate_side must be teamA or teamB")
         index = 0 if side == "teamA" else 1
         own, opponent = summary["teams"][index], summary["teams"][1 - index]
         outcome = summary["outcome"]
         games.append({
-            "map": map_name, "seed": seed, "side": side,
+            "map": map_name, "trial": trial, "side": side,
             "win": 1.0 if outcome == side else (0.5 if outcome in ("draw", "tie") else 0.0),
             "gem_diff": own["submittedGems"] - opponent["submittedGems"],
             "gems": own["submittedGems"], "deaths": own["deaths"],
@@ -94,7 +94,7 @@ def load_records(paths, side, manifest=None):
             raise FileNotFoundError(path)
         with path.open(encoding="utf8") as file:
             yield (summarize_match(json.load(file)),
-                   row["candidate_side"], row.get("map", ""), row.get("seed", ""))
+                   row["candidate_side"], row.get("map", ""), row.get("trial", ""))
 
 
 def main():
