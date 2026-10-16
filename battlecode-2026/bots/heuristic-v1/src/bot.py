@@ -25,28 +25,33 @@ def obstacles():
 
 
 def approach(goals):
-    """Move to a passable goal tile via native distance-field shortest paths."""
+    """Reuse the starter's working distance-field movement for camp roots."""
     me = cambc.me()
     origin = me.position()
-    if not me.can_move():
+    if not me.can_move() or goals.is_set(origin):
         return False
     blocked = obstacles()
-    roots = goals & ~blocked
-    if roots.is_empty() or roots.is_set(origin):
+    # Camps may occupy goals: allow them as distance-field roots but not steps.
+    goals &= ~blocked | cambc.vision.camp_tiles()
+    if goals.is_empty():
         return False
-    if roots.count() == 1:
-        return me.move_towards(roots.positions()[0])
+    if goals.count() == 1 and not blocked.is_set(goals.positions()[0]):
+        return me.move_towards(goals.positions()[0])
     field = cambc.DistanceField()
-    field.compute_to(blocked, roots, area(origin, 0), cambc.Bitboard())
-    current_distance = field.get(origin)
-    # reachable_tiles can include occupied endpoints: enforce final legality.
-    candidates = [p for p in blocked.reachable_tiles(
-        origin, me.base_stats().base_move_speed).positions()
-                  if not blocked.is_set(p)]
-    step = min([origin, *candidates], key=field.get)
-    if (step != origin and not blocked.is_set(step)
-            and field.get(step) < current_distance):
-        return me.move_absolute(step)
+    field.compute_to(blocked & ~goals, goals, area(origin, 0), cambc.Bitboard())
+    candidates = [origin, *blocked.reachable_tiles(
+        origin, me.base_stats().base_move_speed).positions()]
+    current = field.get(origin)
+    candidates.sort(key=field.get)
+    for step in candidates:
+        if step == origin or field.get(step) >= current:
+            continue
+        try:
+            if me.move_absolute(step):
+                return True
+        except cambc.Error:
+            # Known occupied endpoint: try the next legal path candidate.
+            continue
     return False
 
 
@@ -156,11 +161,9 @@ def farm():
     group = preferred_group()
     if group is None:
         return False
-    goals = cambc.Bitboard()
-    attack_radius = max(1, int(me.attack_range()))
-    for camp in group.camps():
-        goals |= area(camp.spawn_position(), attack_radius)
-    moved = approach(goals)
+    # The unchanged starter successfully navigates using occupied camp tiles
+    # as distance-field roots (but not legal movement destinations).
+    moved = approach(group.spawn_tiles().copy())
     if moved:
         # Moving can reveal a new camp and may leave the attack ready.
         for camp in cambc.vision.camps():
