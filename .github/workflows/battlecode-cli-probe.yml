@@ -29,10 +29,15 @@ jobs:
         run: |
           mkdir -p replays/eval-ci
           cambc run heuristic-v1 baseline --map ambush --statistics replays/eval-ci/candidate-A-stats.json
-      - name: Summarize diagnostic match
+      - name: Candidate as Team B (ambush)
+        working-directory: battlecode-2026
+        run: |
+          cambc run baseline heuristic-v1 --map ambush --statistics replays/eval-ci/candidate-B-stats.json
+      - name: Summarize side-swapped matches
         working-directory: battlecode-2026
         run: |
           python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
+          python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
       - name: Inspect replay debug logs
         if: always()
         working-directory: battlecode-2026
@@ -41,7 +46,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: battlecode-v1-contest-eval
+          name: battlecode-v1-ambush-eval
           path: |
             battlecode-2026/replays/eval-ci/
             battlecode-2026/replays/*.repl26a
