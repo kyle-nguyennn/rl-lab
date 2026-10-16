@@ -1,26 +1,15 @@
-"""Fixed draft to reduce random-composition confounding in evaluations."""
-import cambc
+"""Control draft: exactly mirror starter's spawn-seeded deterministic choices.
 
-# Enum members instead of raw unit IDs: Cassi & Issac is ONE draft pick but TWO units.
-ORDER = (
-    cambc.ChampionDraft.CASSI_AND_ISSAC,
-    cambc.ChampionDraft.VESPER_VALE,
-    cambc.ChampionDraft.VENDETTA,
-    cambc.ChampionDraft.TAVI,
-    cambc.ChampionDraft.MARCELLA,
-    cambc.ChampionDraft.RYTH,
-    cambc.ChampionDraft.STELLAR,
-    cambc.ChampionDraft.WILLOW,
-    cambc.ChampionDraft.REN,
-    cambc.ChampionDraft.VARG,
-    cambc.ChampionDraft.PRISM,
-)
+Using an independently fixed line-up would confound comparison with the
+original starter. When comparing same-map/same-side runs, both implementations
+now choose the same champions for that side.
+"""
+import cambc
+from randomness import below
 
 
 def play():
-    already = cambc.draft.current_draft(cambc.Team.ALLY)
-    for choice in ORDER:
-        if choice not in already:
-            cambc.draft.pick(choice)
-            return
-    raise RuntimeError("no available champion to draft")
+    chosen = cambc.draft.current_draft(cambc.Team.ALLY)
+    available = [pick for pick in range(11) if pick not in chosen]
+    cambc.draft_memory.submit(b"hello world")
+    cambc.draft.pick(available[below(len(available))])
