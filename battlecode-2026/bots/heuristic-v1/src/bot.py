@@ -39,9 +39,13 @@ def approach(goals):
     field = cambc.DistanceField()
     field.compute_to(blocked, roots, area(origin, 0), cambc.Bitboard())
     current_distance = field.get(origin)
-    step = min([origin, *blocked.reachable_tiles(
-        origin, me.base_stats().base_move_speed).positions()], key=field.get)
-    if step != origin and field.get(step) < current_distance:
+    # reachable_tiles can include occupied endpoints: enforce final legality.
+    candidates = [p for p in blocked.reachable_tiles(
+        origin, me.base_stats().base_move_speed).positions()
+                  if not blocked.is_set(p)]
+    step = min([origin, *candidates], key=field.get)
+    if (step != origin and not blocked.is_set(step)
+            and field.get(step) < current_distance):
         return me.move_absolute(step)
     return False
 
@@ -161,7 +165,8 @@ def farm():
         # Moving can reveal a new camp and may leave the attack ready.
         for camp in cambc.vision.camps():
             if camp.is_visible() and camp.health() > 0:
-                if try_damage_ability(camp) or try_attack(camp):
+                # Certain spells cannot be cast AFTER normal movement.
+                if try_attack(camp):
                     break
     return moved
 
