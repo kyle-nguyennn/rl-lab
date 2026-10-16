@@ -1,0 +1,17 @@
+name: battlecode
+channels: 
+  - conda-forge
+dependencies:
+- python=3.11
+- pytorch
+- gymnasium
+- stable-baselines3
+- numpy
+- pandas
+- matplotlib
+- tensorboard
+- jupyterlab
+- ipykernel
+- pip
+- pip:
+  - cambc
