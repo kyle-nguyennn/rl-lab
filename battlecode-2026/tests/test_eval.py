@@ -42,7 +42,8 @@ class StatisticsTests(unittest.TestCase):
         self.assertEqual([r["candidate_side"] for r in rows[:2]],
                          ["teamA", "teamB"])
         self.assertNotEqual(rows[0]["team_a"], rows[1]["team_a"])
-        self.assertEqual(rows[0]["map_file"], "maps/contest.map26a")
+        self.assertEqual(rows[0]["map"], "contest")
+        self.assertEqual(rows[0]["trial"], "1")
 
 
 if __name__ == "__main__":
