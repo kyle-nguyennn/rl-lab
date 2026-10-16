@@ -41,24 +41,7 @@ jobs:
       - name: Inspect replay debug logs
         if: always()
         working-directory: battlecode-2026
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import zipfile
-          for f in Path("replays").glob("*.repl26a"):
-              data = f.read_bytes()
-              print("REPLAY", f, "size", len(data), "signature", data[:16].hex(),
-                    "visible_exception_markers", data.count(b"HEURISTIC_V1_ERROR"))
-              if zipfile.is_zipfile(f):
-                  with zipfile.ZipFile(f) as z:
-                      print("REPLAY ZIP CONTENTS", z.namelist())
-                      for name in z.namelist():
-                          if name.endswith((".log", ".txt", ".json")):
-                              b = z.read(name)
-                              for line in b.splitlines():
-                                  if b"HEURISTIC_V1_ERROR" in line or b"Traceback" in line:
-                                      print("ERROR", name, line[:600].decode("utf8", "replace"))
-          PY
+        run: python tools/inspect_replay.py replays/*.repl26a --max-lines 25
       - name: Upload replay and statistics artifacts
         if: always()
         uses: actions/upload-artifact@v4
