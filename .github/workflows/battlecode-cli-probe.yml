@@ -38,6 +38,11 @@ jobs:
         run: |
           python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
           python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
+      - name: Enforce live-match validity gates
+        working-directory: battlecode-2026
+        run: |
+          python tools/validate_runtime.py --statistics replays/eval-ci/candidate-A-stats.json --replay-glob 'replays/heuristic-v1-vs-baseline-*.repl26a' --side teamA --min-gems 1
+          python tools/validate_runtime.py --statistics replays/eval-ci/candidate-B-stats.json --replay-glob 'replays/baseline-vs-heuristic-v1-*.repl26a' --side teamB --min-gems 1
       - name: Inspect replay debug logs
         if: always()
         working-directory: battlecode-2026
