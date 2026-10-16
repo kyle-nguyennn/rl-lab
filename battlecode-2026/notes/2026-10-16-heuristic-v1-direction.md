@@ -1,6 +1,6 @@
 # Battlecode Autumn 2026 — heuristic-v1 direction
 Date: **2026-10-16** (Asia/Singapore)
-Status: **implementation in progress**; no ladder claim.
+Status: **candidate implemented; validates at runtime but underperforms control**. No ladder submission.
 
 ## Baseline evidence
 Repository: `kyle-nguyennn/rl-lab/battlecode-2026`, SDK 2.1.6.
@@ -41,3 +41,16 @@ Maximize **submitted gems per match**, subject to champion survival, action/CPU 
 
 ## Unknowns / risk
 The available GitHub repo lacks turn-by-turn replays and actual command logs; verify draft balance and latency with real runs. The current match's Team B victory is not evidence of candidate skill. A fixed score threshold or champion lineup should not be treated as optimal without controlled experiments.
+
+## Execution record — 2026-10-16
+
+- Added candidate code, pure-policy unit tests, statistical analyzer, match matrix generator, replay stdout inspector, and GitHub Actions automation on `feat/battlecode-2026-heuristic-v1`.
+- Verified actual CLI 2.1.6 syntax: `cambc run BOT_A BOT_B --map MAP --statistics FILE`. There is **no `test-run` subcommand or `--seed` flag** in this release. A trial label is not a seed.
+- Original v1 scored **0 gems** in both contest and ambush matches, yet `botFaults` was zero. Replay ZIPs contain `team-a.stdout`/`team-b.stdout`; captured errors identified bad `move_absolute` destinations and spells after normal movement.
+- Replaced custom camp approach-tile movement with the starter's known-good occupied-camp distance-field roots; skip forbidden movement endpoints; forbid casting offensive abilities after normal movement. After these fixes, the candidate scored **504 gems** against baseline's **1038** in an ambush game with no printed Python exceptions.
+- To remove the deterministic-draft confound, copied starter RNG and starter draft semantics into the candidate (champion choice remains deterministic per spawn). On `ambush`, candidate Team A scored **504 vs 1038** baseline B; candidate Team B **696 vs 966** baseline A. Both matches finished with zero engine faults and no `HEURISTIC_V1_ERROR` markers. **Win rate: 0/2; do not submit this candidate as a stronger bot yet.**
+- Integration evidence: [GitHub Actions side-swapped ambush run](https://github.com/kyle-nguyennn/rl-lab/actions/runs/38861308987). Match replays and stats are available as that run's artifacts.
+
+### Interpretation / next measured ablation
+
+The runtime issue is fixed, but the policy is materially weaker than the unchanged starter. It is premature to attribute this to banking, builds, spells or camp choices from two matches. Next isolate **nearest-camp baseline routing vs reward-aware group scoring**, then banking threshold, deterministic item selection and spell logic one component at a time. Track submitted and collected gems separately, along with monster damage, gold earned/spent, deaths, and stdout errors. Use multiple maps and side swaps; do not invent a seed argument. Retain the unchanged starter for a safe Sprint 1 submission if no variant beats it.
