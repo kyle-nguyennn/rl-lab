@@ -32,15 +32,16 @@ From `battlecode-2026/`:
 ```sh
 python -m pip install 'cambc==2.1.6'
 cambc run --help
-cambc test-run --help
+cambc run-batch --help
 ```
 
-Use the **Autumn 2026a** CLI help, not guides for the older miner/builder 2026 edition. The actual required CLI flags for producing a stats file have not been verified in this repo and are deliberately **not hardcoded**.
+The **Autumn 2026a** CLI syntax was verified on Linux in GitHub Actions. It supports \`cambc run BOT_A BOT_B --map MAP --statistics FILE\`; **there is no \`test-run\` or \`--seed\` command/flag in 2.1.6**.
 
 Create a side-swapped evaluation manifest for multiple seeds/maps:
 
 ```sh
-python tools/eval_matches.py --maps contest lanes ambush --seeds 1 2 3 4 5
+python tools/eval_matches.py --maps lanes ambush pilgrimage
+python tools/eval_matches.py --maps lanes ambush pilgrimage --execute
 ```
 
 This creates `replays/eval-v1/manifest.csv` with 30 planned games (candidate vs baseline in both team positions). To execute, provide a locally verified `--run-template` using placeholders `{team_a}`, `{team_b}`, `{map}`, `{seed}`, `{stats}` and add `--execute`. The runner **requires** that each completed match writes the named stats JSON file, and fails if it does not.
