@@ -50,7 +50,9 @@ def candidate_results(records):
             "map": map_name, "trial": trial, "side": side,
             "win": 1.0 if outcome == side else (0.5 if outcome in ("draw", "tie") else 0.0),
             "gem_diff": own["submittedGems"] - opponent["submittedGems"],
-            "gems": own["submittedGems"], "deaths": own["deaths"],
+            "gems": own["submittedGems"], "collected": own["collectedGems"],
+            "monster_damage": own["monsterDamageDone"],
+            "gold_spent": own["spentGold"], "deaths": own["deaths"],
             "gems_per_round": own["gems_per_round"],
             "gold_idle_fraction": own["gold_idle_fraction"],
             "faults": (summary["faults"][index] if len(summary["faults"]) > index else None),
@@ -61,7 +63,8 @@ def candidate_results(records):
 def report(games):
     if not games:
         raise ValueError("no matches to summarize")
-    keys = ("win", "gem_diff", "gems", "deaths", "gems_per_round", "gold_idle_fraction")
+    keys = ("win", "gem_diff", "gems", "collected", "monster_damage",
+            "gold_spent", "deaths", "gems_per_round", "gold_idle_fraction")
     result = {"games": len(games)}
     for key in keys:
         result["mean_" + key] = round(mean(g[key] for g in games), 4)
