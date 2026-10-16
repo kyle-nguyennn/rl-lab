@@ -24,24 +24,47 @@ jobs:
           cambc run --help
           cambc run-batch --help
           cambc build --help
-      - name: Candidate as Team A (contest)
+      - name: Candidate as Team A (ambush)
         working-directory: battlecode-2026
         run: |
           mkdir -p replays/eval-ci
-          cambc run heuristic-v1 baseline --map contest --statistics replays/eval-ci/candidate-A-stats.json
-      - name: Candidate as Team B (contest)
+          cambc run heuristic-v1 baseline --map ambush --statistics replays/eval-ci/candidate-A-stats.json
+      - name: Candidate as Team B (ambush)
         working-directory: battlecode-2026
         run: |
-          cambc run baseline heuristic-v1 --map contest --statistics replays/eval-ci/candidate-B-stats.json
+          cambc run baseline heuristic-v1 --map ambush --statistics replays/eval-ci/candidate-B-stats.json
       - name: Summarize swapped matches
         working-directory: battlecode-2026
         run: |
           python tools/summarize_stats.py replays/eval-ci/candidate-A-stats.json --candidate-side teamA
           python tools/summarize_stats.py replays/eval-ci/candidate-B-stats.json --candidate-side teamB
+      - name: Inspect replay debug logs
+        if: always()
+        working-directory: battlecode-2026
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          for f in Path("replays").glob("*.repl26a"):
+              data = f.read_bytes()
+              print("REPLAY", f, "size", len(data), "signature", data[:16].hex(),
+                    "visible_exception_markers", data.count(b"HEURISTIC_V1_ERROR"))
+              if zipfile.is_zipfile(f):
+                  with zipfile.ZipFile(f) as z:
+                      print("REPLAY ZIP CONTENTS", z.namelist())
+                      for name in z.namelist():
+                          if name.endswith((".log", ".txt", ".json")):
+                              b = z.read(name)
+                              for line in b.splitlines():
+                                  if b"HEURISTIC_V1_ERROR" in line or b"Traceback" in line:
+                                      print("ERROR", name, line[:600].decode("utf8", "replace"))
+          PY
       - name: Upload replay and statistics artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: battlecode-v1-contest-eval
-          path: battlecode-2026/replays/eval-ci/
+          path: |
+            battlecode-2026/replays/eval-ci/
+            battlecode-2026/replays/*.repl26a
           if-no-files-found: warn
